@@ -1,0 +1,60 @@
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.python-version
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+**/tmp*/
+**/tmp*
+
+# Project runtime artifacts
+outputs/
+data/
+datasets/
+proxychains.conf
+*.db
+*.sqlite
+*.sqlite3
+
+# Local test scratch files
+/test*
+!/tests/
+!/tests/**
+

@@ -1,0 +1,13 @@
+# Dependencies for the unified planner and report-generation web app.
+-r dianwang_report_gen/requirements.txt
+
+# Flask bridge and planner dependencies not included in the report service.
+Flask==3.1.1
+flask-cors==6.0.1
+fortranformat==2.0.3
+httpx==0.28.1
+python-docx==1.1.2
+pytest==8.3.5
+pytest-mock==3.14.1
+
+# pybpa is distributed separately for compatible BPA/DSP installations.

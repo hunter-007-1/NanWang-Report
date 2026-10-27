@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /hujinwu/wqy/nanwang/powergrid_pipeline remote -v)",
+      "Bash(git -C /hujinwu/wqy/nanwang/powergrid_pipeline rev-parse --show-toplevel)",
+      "Bash(git -C /hujinwu/wqy/nanwang/powergrid_pipeline status --short)",
+      "Bash(git -C /hujinwu/wqy/nanwang/powergrid_pipeline branch -a)"
+    ]
+  }
+}

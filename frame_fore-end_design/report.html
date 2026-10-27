@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>规划方案报告 Demo</title>
+    <link rel="stylesheet" href="./report.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero card">
+        <p class="eyebrow">Planning Report Demo</p>
+        <h1>规划方案结果页</h1>
+        <p id="head-meta" class="meta">任务与方案信息加载中...</p>
+        <div class="hero-actions">
+          <a class="btn" href="./index.html">返回主页面</a>
+        </div>
+      </header>
+
+      <section class="grid">
+        <article class="card">
+          <h2>方案摘要</h2>
+          <p id="summary-text">-</p>
+        </article>
+
+        <article class="card">
+          <h2>综合评分</h2>
+          <p id="score-num" class="big-num">-</p>
+          <div class="meter">
+            <div id="score-bar" class="meter-fill"></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid three">
+        <article class="card">
+          <h3>供电可靠性提升</h3>
+          <p id="kpi-1" class="big-num small">-</p>
+        </article>
+        <article class="card">
+          <h3>线路过载改善</h3>
+          <p id="kpi-2" class="big-num small">-</p>
+        </article>
+        <article class="card">
+          <h3>N-1 校核通过率</h3>
+          <p id="kpi-3" class="big-num small">-</p>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>关联异常处理结果</h2>
+          <ul id="anomaly-list" class="list"></ul>
+        </article>
+        <article class="card">
+          <h2>实施建议</h2>
+          <ol id="action-list" class="list"></ol>
+        </article>
+      </section>
+    </main>
+
+    <script defer src="./report.js?v=20260324_2"></script>
+  </body>
+</html>

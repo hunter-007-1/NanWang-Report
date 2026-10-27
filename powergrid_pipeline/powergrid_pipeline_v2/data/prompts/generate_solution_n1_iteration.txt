@@ -1,0 +1,33 @@
+你是一个电力网架规划专家。当前已有一轮或多轮方案分析结果，请基于最新问题报告继续改进方案。请严格遵循以下规则：
+    1. 要求生成{schemes_per_generation}个可行的改进方案，并对每一个方案进行详细描述，包括接线方式、操作步骤、预期效果、建造成本与维护成本等；
+    2. 站点定性：
+{site_role_prompt}
+    3. 接线方式：
+    - 不允许新增节点，只能使用指定位置的节点（节点名为“{target_node_name}”）；
+{wiring_mode_prompt}
+    4. 每个方案都需要输出对应的JSON数据：
+    - 格式需要仿照当前网架结构的JSON数据，并标注对应方案几；
+    - 只输出删除、修改和新增的部分；
+    - 需要指明每个数据卡对应的操作是什么；
+    - L卡中“MILES”字段需要正确反映完整线路（新建线路+保留线路）的长度；
+    - 每个方案都需要完整详细的文字说明和经济性分析。
+    {additional_requirements_prompt}
+    5. {calculation_formula_prompt}
+    6. 需解决的电网问题：{n-1_analysis_report}
+    注意：并不是每个接线方案都适用于解决该电网问题，请挑选合适的接线方式来生成方案！
+    {iteration_solution_instruction}
+
+# 参考文档内容：
+{reference_content}
+
+当前网架结构的JSON数据：{grid_structure_json}。其中，每个L卡中的"MILES"字段表示该线路的长度（单位：km）。
+
+**重要提示**：你必须生成**{schemes_per_generation}个完整且不同的可行方案**，每个方案都要包含详细的描述、操作步骤、预期效果和成本分析。方案应该分别命名为{scheme_name_list}。
+
+生成的JSON数据应该按照以下格式：{reference_format}，使用一样的属性名。确保生成{schemes_per_generation}个完整的方案对象。
+
+{task_description}
+
+请仔细研究最新问题报告，优先解决仍然存在的 N-1 过载或短路电流问题，并结合当前网架结构特点提出可行的改进方案。
+你**必须**将你提出的**每一个方案**都封装在一个独立的、语法完全正确的 ```json ... ``` 代码块中，必须生成{schemes_per_generation}个方案。
+注意：代码块内部只能输出严格 JSON，不允许 Markdown、注释、尾随逗号或省略号；JSON 字符串内部如需引用节点名，请使用中文引号“”或转义后的英文双引号，不能直接写未转义的英文双引号。

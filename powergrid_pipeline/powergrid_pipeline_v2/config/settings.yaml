@@ -1,0 +1,40 @@
+# ===================================================================
+# PowerGrid Pipeline - 统一配置文件
+# ===================================================================
+
+# --- 1. 路径配置 ---
+# 定义所有与文件系统相关的路径
+paths:
+  # Set DSP_BIN_DIR in your local environment for real simulations.
+  dsp_bin_dir: ""
+
+
+  # 项目内部数据路径 (通常不需要修改)
+  data_dir: "data"
+  base_model_dir: "data/base_model"
+  proposals_dir: "data/proposals"
+  runs_output_dir: "runs"
+
+# --- 2. API与模型配置 ---
+# 与外部API（如大语言模型）相关的配置
+api:
+  # Set MODELSCOPE_API_KEY in your local environment.
+  modelscope_api_key: ""
+  modelscope_base_url: "https://api-inference.modelscope.cn/v1"
+  llm_model_name: "Qwen/Qwen3-235B-A22B-Instruct-2507"
+
+# --- 3. 评估阈值 ---
+# 用于评估阶段的各项指标阈值
+assessment_thresholds:
+  # 线路过载判断标准（单位：%）
+  overload_ratio: 90.0
+
+  # 短路电流超标判断标准（单位：kA）
+  short_circuit_current_kA: 60.0
+
+# --- 4. 仿真参数 ---
+# 调用仿真程序时的默认参数
+simulation_params:
+  # 潮流计算默认模式
+  # 1: 读写历史解法, 2: 不读不写, 3: 不读但写, 4: 读且写
+  power_flow_mode: 1

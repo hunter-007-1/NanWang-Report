@@ -1,0 +1,524 @@
+version: 1
+# 经济类内部计算单位统一为“元”（与历史案例数值一致，如 240000000 表示 2.4 亿元）。
+# 汇总表若需显示“亿元”，必须通过统一格式化函数转换，禁止改写内部数值口径。
+defaults:
+  annual_cost:
+    interest_rate: 0.07
+    years: 20
+  operation_cost:
+    rate: 0.015
+  lifecycle_cost:
+    # 规划阶段简化估算系数；不是完整折现 LCC 模型
+    factor: 1.25
+  network_loss:
+    # 年等效网损小时数、网损电价须由输入或配置显式提供；缺省不虚构
+    equivalent_hours: null
+    price_per_mwh: null
+metrics:
+  construction_cost:
+    label: 建设投资
+    unit: 元
+    category: economic
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "sum(length_km * unit_cost_per_km * condition_factor)"
+    required_inputs:
+      - line_items
+    notes: 仅在满足技术约束方案中比较；成本异常低时需校核是否少建或漏项。内部单位为元。
+  operation_cost:
+    label: 年运行维护费
+    unit: 元/年
+    category: economic
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "construction_cost * rate"
+    required_inputs:
+      - construction_cost
+    default_inputs:
+      rate: 0.015
+    notes: 内部单位为元/年。
+  annual_cost:
+    label: 年费用
+    unit: 元/年
+    category: economic
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "construction_cost * i * (1 + i)**n / ((1 + i)**n - 1) + operation_cost"
+    required_inputs:
+      - construction_cost
+      - operation_cost
+    default_inputs:
+      interest_rate: 0.07
+      years: 20
+    notes: |
+      仅表示年费用，禁止与 lifecycle_cost（全寿命周期成本）混用或互为回退。
+      内部单位为元/年。
+  lifecycle_cost:
+    label: 全寿命周期成本LCC
+    unit: 元
+    category: economic
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "construction_cost * factor"
+    formula_by_mode:
+      estimated_simplified: "construction_cost * factor"
+      full_calculated: "construction_cost + sum(cash_flow.cost / (1 + discount_rate) ** cash_flow.year)"
+    required_inputs:
+      - construction_cost
+    default_inputs:
+      factor: 1.25
+    notes: |
+      默认 formula 为规划阶段简化估算（建设投资×系数），calculation_mode=estimated_simplified。
+      仅当完全未提供任何完整折现专用字段（cash_flows/lifecycle_cash_flows、discount_rate/interest_rate、
+      evaluation_years/方案显式 years）时，才允许简化估算。
+      只要提供任意完整折现专用字段，即视为完整折现意图，必须三类参数全部存在且有效；
+      部分提供、类型错误、空 cash_flows 或内容错误均为 invalid_data，禁止回退 estimated_simplified。
+      当 cash_flows（非空列表）、discount_rate 与 evaluation_years 齐备且全部记录有效时，
+      使用完整折现 NPV，calculation_mode=full_calculated，对应 formula_by_mode.full_calculated。
+      discount_rate 必须为有限数值且 >= 0（允许 0；拒绝 bool/NaN/Inf/负数）；evaluation_years 须为有限且 >= 0（允许小数）。
+      完整折现要求每条现金流记录均含有效 year/cost，且 year 落在 [0, evaluation_years]；
+      单笔 cash_flow.cost 可为负（残值/回收/补贴），但最终 LCC 结果必须 >= 0。
+      禁止静默跳过坏记录后仍标记 full_calculated；空 cash_flows 不得进入完整折现。
+      完整参数已提供但内容无效时：status=invalid_data，禁止回退 estimated_simplified。
+      已直接提供的 lifecycle_cost 原样保留，calculation_mode=provided，formula=None；须为有限非负数。
+      construction_cost / operation_cost / annual_cost / lifecycle_cost / factor 均不得为负。
+      禁止使用 annual_cost 作为 lifecycle_cost 的回退值。
+      内部单位为元。
+  pf_convergence:
+    label: 基态潮流收敛性
+    unit: ""
+    category: technical
+    comparison_type: binary_constraint
+    direction: higher_better
+    constraint: true
+    formula: "1 if is_convergent else 0"
+    required_inputs:
+      - is_convergent
+    notes: 安全硬约束。汇总表显示为“是/否”。布尔字符串须按语义解析，禁止 bool("false")。
+  n1_pass_rate:
+    label: N-1通过率
+    unit: "%"
+    category: technical
+    comparison_type: monotonic_margin
+    direction: higher_better
+    constraint: true
+    formula: "pass_count / total_count * 100"
+    required_inputs:
+      - pass_count
+      - total_count
+    notes: |
+      安全硬约束。
+      当前汇总口径：pass_count = total_contingencies_run - len(contingencies_with_issues)。
+      contingencies_with_issues 视为“问题故障集合”（当前案例中主要为线路过载等已写入该列表的问题）。
+      未在原始 JSON 中单独枚举的不收敛、主变过载、电压越限、孤岛、失负荷等，
+      仅当已被纳入 contingencies_with_issues 时才会反映到通过率中；不得声称已覆盖全部判据。
+      总故障数为 0 时不得计算（避免除零）。
+    bands:
+      - label: 最优
+        min: 100
+        max: 100
+        inclusive_min: true
+        inclusive_max: true
+      - label: 较优
+        min: 95
+        max: 100
+        inclusive_min: false
+        inclusive_max: false
+      - label: 可用但需关注
+        min: 90
+        max: 95
+        inclusive_min: true
+        inclusive_max: true
+      - label: 可用性较弱
+        max: 90
+        inclusive_max: false
+    hard_constraint:
+      operator: ">="
+      threshold: 90.0
+  weighted_n1_pass_rate:
+    label: N-1负荷加权通过率
+    unit: "%"
+    category: technical
+    comparison_type: monotonic_margin
+    direction: higher_better
+    constraint: true
+    formula: "passed_load / total_load * 100"
+    required_inputs:
+      - passed_load
+      - total_load
+    notes: |
+      安全硬约束。与 N-1 通过率关联，不重复计分。
+      必须使用通过故障对应负荷 / 全部故障对应总负荷；不可用故障数量代替。
+      当前历史 N-1 JSON 未提供每故障负荷/失负荷/转供负荷字段时，显示“数据不足”，不虚构结果。
+  short_circuit_margin:
+    label: 短路裕度
+    unit: kA
+    category: technical
+    comparison_type: monotonic_margin
+    direction: higher_better
+    constraint: false
+    formula: "breaker_current - short_circuit_current"
+    required_inputs:
+      - breaker_current
+      - short_circuit_current
+    bands:
+      - label: 最优
+        min: 8
+        inclusive_min: false
+      - label: 较优
+        min: 5
+        max: 8
+        inclusive_min: true
+        inclusive_max: true
+      - label: 一般
+        min: 2
+        max: 5
+        inclusive_min: true
+        inclusive_max: false
+      - label: 风险较高
+        min: 0
+        max: 2
+        inclusive_min: false
+        inclusive_max: false
+      - label: 不合格
+        max: 0
+        inclusive_max: true
+  min_breaker_interrupt_margin_rate:
+    label: 最小断路器开断裕度率
+    unit: "%"
+    category: technical
+    comparison_type: monotonic_margin
+    direction: higher_better
+    constraint: true
+    formula: "min((breaker_current_i - short_circuit_current_i) / breaker_current_i * 100)"
+    required_inputs:
+      - records
+    notes: |
+      安全硬约束。逐节点配对后取最小值；禁止跨节点用最大短路电流与最大断路器电流直接运算。
+      负值表示短路电流超过断路器开断能力。
+      与短路越限比例同属短路维度，不简单重复加分。
+      若输入仅含越限节点，则结果仅代表越限子集；真正的方案最小裕度应基于全部有效校核节点。
+  short_circuit_level_percent:
+    label: 短路电流水平
+    unit: "%"
+    category: technical
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: false
+    formula: "short_circuit_current / breaker_current * 100"
+    required_inputs:
+      - short_circuit_current
+      - breaker_current
+    bands:
+      - label: 最优
+        max: 80
+        inclusive_max: true
+      - label: 较优
+        min: 80
+        max: 90
+        inclusive_min: false
+        inclusive_max: true
+      - label: 需关注
+        min: 90
+        max: 100
+        inclusive_min: false
+        inclusive_max: true
+      - label: 淘汰
+        min: 100
+        inclusive_min: false
+  short_circuit_over_limit_count:
+    label: 短路越限节点数
+    unit: 个
+    category: technical
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: false
+    formula: "count(nodes where short_circuit_current > allowed_current)"
+    required_inputs:
+      - records
+  short_circuit_over_limit_ratio:
+    label: 短路越限比例
+    unit: "%"
+    category: technical
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: true
+    formula: "over_limit_count / check_count * 100"
+    required_inputs:
+      - over_limit_count
+      - check_count
+    notes: |
+      安全硬约束。分母须为有效校核节点总数（如 analysis.total_buses），
+      不得把越限节点数同时当作分子和分母。
+      缺少分母时比例显示“数据不足”，仍可保留越限节点数。
+  voltage_over_limit_count:
+    label: 电压越限节点数
+    unit: 个
+    category: technical
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: true
+    formula: "count(nodes where voltage < min_voltage or voltage > max_voltage)"
+    required_inputs:
+      - records
+  voltage_over_limit_ratio:
+    label: 电压越限比例
+    unit: "%"
+    category: technical
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: true
+    formula: "over_limit_count / node_count * 100"
+    required_inputs:
+      - over_limit_count
+      - node_count
+  line_loading_rate:
+    label: 线路重过载率
+    unit: "%"
+    category: technical
+    comparison_type: target_interval
+    direction: target_interval
+    constraint: false
+    formula: "actual_current / allowed_current * 100"
+    required_inputs:
+      - actual_current
+      - allowed_current
+    target_interval:
+      min: 60
+      max: 80
+  transformer_loading_rate:
+    label: 变压器重载率
+    unit: "%"
+    category: technical
+    comparison_type: target_interval
+    direction: target_interval
+    constraint: false
+    formula: "apparent_power / rated_capacity * 100"
+    required_inputs:
+      - apparent_power
+      - rated_capacity
+    target_interval:
+      min: 70
+      max: 85
+  voltage_qualification_rate:
+    label: 电压合格率
+    unit: "%"
+    category: technical
+    layer: technical_performance
+    core: true
+    comparison_type: monotonic_margin
+    direction: higher_better
+    constraint: false
+    formula: "qualified_count / total_evaluated_count * 100"
+    required_inputs:
+      - qualified_count
+      - total_evaluated_count
+    valid_range: [0, 100]
+    notes: 需要全量参与评价节点；不得用问题子集伪造合格率。
+  voltage_over_limit_severity:
+    label: 电压越限严重度
+    unit: "pu²"
+    category: technical
+    layer: technical_performance
+    core: true
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: false
+    formula: "sum(max(Vmin - V, 0, V - Vmax)^2)"
+    required_inputs:
+      - records
+    notes: 按节点逐项平方偏差求和；需要节点电压与上下限。
+  node_period_voltage_over_limit_rate:
+    label: 节点—时段电压越限率
+    unit: "%"
+    category: technical
+    layer: technical_performance
+    core: true
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: false
+    formula: "over_limit_node_period_pairs / total_valid_node_period_pairs * 100"
+    required_inputs:
+      - over_limit_count
+      - total_count
+    valid_range: [0, 100]
+    notes: 单场景单时段仍按一个明确时段处理。
+  max_line_loading_rate:
+    label: 最大线路负载率
+    unit: "%"
+    category: technical
+    layer: technical_performance
+    core: true
+    comparison_type: target_interval
+    direction: lower_better
+    constraint: false
+    formula: "max(line_loading_rate_i)"
+    required_inputs:
+      - records
+    notes: |
+      单条优先：实际电流/允许电流；否则视在功率/额定视在功率；同一记录不混用两种口径。
+      缺少全量线路结果时不得用问题子集冒充全网最大值。
+    target_interval:
+      min: 60
+      max: 80
+  max_transformer_loading_rate:
+    label: 最大主变负载率
+    unit: "%"
+    category: technical
+    layer: technical_performance
+    core: true
+    comparison_type: target_interval
+    direction: lower_better
+    constraint: false
+    formula: "max(transformer_loading_rate_i)"
+    required_inputs:
+      - records
+    notes: 需要全量主变结果；问题子集不得冒充全网最大值。
+    target_interval:
+      min: 70
+      max: 85
+  active_power_loss_rate:
+    label: 有功网损率
+    unit: "%"
+    category: technical
+    layer: technical_performance
+    core: true
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: false
+    formula: "active_power_loss / input_active_power * 100"
+    required_inputs:
+      - loss_mw
+      - input_power_mw
+    valid_range: [0, 100]
+  critical_section_margin_rate:
+    label: 关键断面输送裕度率
+    unit: "%"
+    category: technical
+    layer: technical_performance
+    core: true
+    comparison_type: monotonic_margin
+    direction: higher_better
+    constraint: true
+    formula: "min((limit - abs(flow)) / limit * 100)"
+    required_inputs:
+      - sections
+    notes: 多断面取最小裕度；允许为负。
+  post_contingency_max_equipment_loading_rate:
+    label: 故障后最大设备负载率
+    unit: "%"
+    category: technical
+    layer: safety_constraint
+    core: true
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: true
+    formula: "max(post_contingency_equipment_loading_rate)"
+    required_inputs:
+      - records
+    notes: 需覆盖全部有效N-1故障下的线路与主变；不得只取首条故障。
+  post_contingency_voltage_over_limit_rate:
+    label: 故障后电压越限率
+    unit: "%"
+    category: technical
+    layer: safety_constraint
+    core: true
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: true
+    formula: "over_limit_fault_node_pairs / total_valid_fault_node_pairs * 100"
+    required_inputs:
+      - over_limit_count
+      - total_count
+    valid_range: [0, 100]
+  transient_stability_pass_rate:
+    label: 暂态稳定通过率
+    unit: "%"
+    category: technical
+    layer: safety_constraint
+    core: true
+    comparison_type: monotonic_margin
+    direction: higher_better
+    constraint: true
+    formula: "stable_fault_count / total_transient_fault_count * 100"
+    required_inputs:
+      - pass_count
+      - total_count
+    valid_range: [0, 100]
+  max_generator_relative_angle_difference:
+    label: 最大机组相对功角差
+    unit: "度"
+    category: technical
+    layer: safety_constraint
+    core: true
+    comparison_type: monotonic_risk
+    direction: lower_better
+    constraint: true
+    formula: "max_fault_time(max(angles)-min(angles))"
+    required_inputs:
+      - records
+  new_line_length:
+    label: 新建线路长度
+    unit: km
+    category: technical
+    layer: engineering
+    core: true
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "sum(new_line_lengths)"
+    required_inputs:
+      - line_items
+    notes: |
+      仅统计明确 add_line 等新增标识。
+      单位规则：
+      - length_km / 长度_km → km，可直接求和，结果 unit=km；
+      - MILES / miles → mile，原样求和，结果 unit=mile，不做英里→公里换算；
+      - 普通 length 无明确单位 → unknown，不得擅自标为 km；
+      - 同一方案同时存在 km 与 mile → 禁止求和，返回缺失/无效并注明混合单位。
+      默认 unit=km 仅作规则占位；实际 derived 单位以适配器返回为准。
+  retrofit_line_length:
+    label: 改造线路长度
+    unit: km
+    category: technical
+    layer: engineering
+    core: true
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "sum(retrofit_line_lengths)"
+    required_inputs:
+      - line_items
+    notes: |
+      disable_branch+add_line 不得自动认定为改造，除非有明确 retrofit/配对字段。
+      单位规则与 new_line_length 相同：全 km→km，全 MILES/miles→mile，混合单位禁止求和。
+  annual_energy_loss:
+    label: 年电量损耗
+    unit: MWh/年
+    category: economic
+    layer: economic
+    core: true
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "summer_peak_loss_mw * equivalent_loss_hours"
+    required_inputs:
+      - loss_mw
+      - equivalent_hours
+  annual_network_loss_cost:
+    label: 年度网损成本
+    unit: 元/年
+    category: economic
+    layer: economic
+    core: true
+    comparison_type: cost
+    direction: lower_better
+    constraint: false
+    formula: "annual_energy_loss_mwh * price_per_mwh"
+    required_inputs:
+      - annual_energy_loss_mwh
+      - price_per_mwh

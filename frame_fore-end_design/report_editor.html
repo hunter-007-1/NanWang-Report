@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>比选报告预览与编辑</title>
+    <link rel="stylesheet" href="./report_editor.css?v=20260402_5" />
+    <link rel="stylesheet" href="./vendor/katex/katex.min.css" />
+  </head>
+  <body>
+    <div class="noise-bg"></div>
+    <main class="page">
+      <header class="hero card">
+        <div>
+          <p class="eyebrow">Compare Report Workspace</p>
+          <h1>比选报告预览与编辑</h1>
+          <p id="head-meta" class="meta">正在读取报告...</p>
+        </div>
+        <a class="ghost-btn" href="./index.html">返回首页</a>
+      </header>
+
+      <section class="card toolbar-card">
+        <div class="mode-switch" role="tablist" aria-label="编辑模式">
+          <button id="preview-mode-btn" type="button" class="mode-btn active" aria-selected="true">预览模式</button>
+          <button id="edit-mode-btn" type="button" class="mode-btn" aria-selected="false">编辑模式</button>
+        </div>
+        <div class="preview-style-settings" aria-label="预览样式设置">
+          <label class="setting-item" for="preview-font-select">
+            <span>预览字体</span>
+            <select id="preview-font-select">
+              <option value="sans">现代无衬线</option>
+              <option value="serif">书刊衬线</option>
+              <option value="song">思源宋体风格</option>
+              <option value="hei">思源黑体风格</option>
+              <option value="wenkai">文楷风格</option>
+            </select>
+          </label>
+          <label class="setting-item" for="preview-size-select">
+            <span>预览字号</span>
+            <select id="preview-size-select">
+              <option value="14">14</option>
+              <option value="15">15</option>
+              <option value="16">16</option>
+              <option value="18">18</option>
+            </select>
+          </label>
+          <button id="preview-style-reset-btn" type="button" class="secondary">重置预览样式</button>
+        </div>
+        <div class="actions">
+          <button id="versions-btn" type="button" class="secondary">历史版本</button>
+          <button id="reload-btn" type="button" class="secondary">重置报告</button>
+          <button id="save-btn" type="button" class="primary">保存修改</button>
+          <button id="export-pdf-btn" type="button" class="success">导出 PDF</button>
+          <button id="export-docx-btn" type="button" class="success">导出 DOCX</button>
+        </div>
+      </section>
+
+      <section id="versions-panel" class="card versions-card hidden">
+        <div class="versions-head">
+          <div>
+            <h2>历史版本</h2>
+            <p>保存修改和 AI 改写自动保存时会生成版本快照。</p>
+          </div>
+          <button id="versions-refresh-btn" type="button" class="secondary">刷新</button>
+        </div>
+        <div id="versions-list" class="versions-list">暂无历史版本。</div>
+      </section>
+
+      <div id="version-preview-modal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" data-version-preview-close="true"></div>
+        <section class="version-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="version-preview-title">
+          <header class="version-preview-head">
+            <div>
+              <h2 id="version-preview-title">历史版本预览</h2>
+              <p id="version-preview-meta" class="meta">未选择历史版本</p>
+            </div>
+            <button id="version-preview-close-btn" type="button" class="secondary">关闭</button>
+          </header>
+          <div id="version-preview-content" class="version-preview-content markdown-body"></div>
+          <footer class="version-preview-actions">
+            <button id="version-preview-cancel-btn" type="button" class="secondary">关闭</button>
+            <button id="version-preview-delete-btn" type="button" class="danger">删除此版本</button>
+            <button id="version-preview-restore-btn" type="button" class="primary">恢复此版本</button>
+          </footer>
+        </section>
+      </div>
+
+      <section class="card workspace-card">
+        <div id="preview-panel" class="panel markdown-body"></div>
+        <div id="edit-panel" class="panel hidden">
+          <textarea id="editor-textarea" spellcheck="false" aria-label="报告编辑区" placeholder="在此编辑报告 Markdown 内容"></textarea>
+          <div class="rewrite-demo" aria-label="AI 改写 Demo">
+            <div class="rewrite-demo-head">
+              <h3>AI 改写区</h3>
+              <p>先在编辑框选中文字，再输入修改意见。</p>
+            </div>
+            <div id="rewrite-selection-meta" class="rewrite-meta">当前未选中文本</div>
+            <textarea id="rewrite-instruction" class="rewrite-instruction" placeholder="例如：请更专业且更简洁，保留关键数据和结论。"></textarea>
+            <div class="rewrite-actions">
+              <button id="rewrite-generate-btn" type="button" class="secondary">生成建议</button>
+              <button id="rewrite-apply-btn" type="button" class="primary" disabled>应用建议到选区</button>
+            </div>
+            <label class="rewrite-result-label" for="rewrite-result">改写建议</label>
+            <textarea id="rewrite-result" class="rewrite-result" readonly placeholder="这里会显示 AI 返回的改写文本"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card log-card">
+        <h2>处理日志</h2>
+        <ul id="editor-log" class="runtime-log">
+          <li>正在初始化报告工作区...</li>
+        </ul>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        window.__reportEditorBooted = false;
+        function showBootError(msg) {
+          var log = document.getElementById("editor-log");
+          if (!log) return;
+          log.innerHTML = "";
+          var li = document.createElement("li");
+          li.style.color = "#8d2929";
+          li.textContent = msg;
+          log.appendChild(li);
+        }
+
+        window.addEventListener("error", function (e) {
+          var msg = (e && e.message) ? e.message : "未知脚本错误";
+          showBootError("脚本错误：" + msg);
+        });
+
+        window.addEventListener("unhandledrejection", function (e) {
+          var reason = (e && e.reason) ? String(e.reason) : "未知 Promise 错误";
+          showBootError("异步错误：" + reason);
+        });
+
+        setTimeout(function () {
+          if (!window.__reportEditorBooted) {
+            showBootError("报告编辑脚本未启动。请强制刷新（Ctrl+Shift+R）或检查控制台报错。");
+          }
+        }, 2000);
+      })();
+    </script>
+    <script defer src="./vendor/markdown-it/markdown-it.min.js"></script>
+    <script defer src="./vendor/markdown-it-footnote/markdown-it-footnote.min.js"></script>
+    <script defer src="./vendor/katex/katex.min.js"></script>
+    <script defer src="./vendor/katex/contrib/auto-render.min.js"></script>
+    <script defer src="./report_editor.js?v=20260723_2"></script>
+  </body>
+</html>

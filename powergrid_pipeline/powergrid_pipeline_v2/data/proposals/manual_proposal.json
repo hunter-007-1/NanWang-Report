@@ -1,0 +1,15 @@
+{
+  "proposal_name": "手动测试方案_新增线路",
+  "description": "用于测试apply命令，新增一条测试线路。",
+  "modifications": [
+    {
+      "action": "add_line",
+      "params": {
+        "name1": "TESTBUS1", "base1": 500.0,
+        "name2": "TESTBUS2", "base2": 500.0,
+        "ckt": "T", "r": 0.001, "x": 0.01, "b": 0.1, "rate_a": 1000.0
+      },
+      "comment": "这是一条测试线路"
+    }
+  ]
+}

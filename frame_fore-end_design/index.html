@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>基于人工智能的500kV以上网架规划系统</title>
+    <link rel="stylesheet" href="./styles.css?v=20260512_1" />
+  </head>
+  <body>
+    <div class="noise-bg"></div>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">Grid Planning Workflow</p>
+          <h1>基于人工智能的500kV以上网架规划系统</h1>
+      </header>
+
+      <section class="card input-card">
+        <h2>1. 输入区</h2>
+        <form id="task-form" class="input-form" novalidate>
+          <label class="field">
+            <span>原始文件夹（必填）</span>
+            <input id="file-input" type="file" webkitdirectory directory multiple />
+          </label>
+          <label class="field small">
+            <span>目标方案数 n（必填）</span>
+            <input id="count-input" type="number" min="1" max="20" value="5" />
+          </label>
+          <label class="field small">
+            <span>案例类型</span>
+            <select id="case-select">
+              <option value="shuifu">水富案例</option>
+              <option value="yuezhou">越州案例</option>
+              <option value="generic">通用案例</option>
+            </select>
+          </label>
+          <div class="field small analysis-option-field">
+            <span>暂态分析</span>
+            <label class="check-option inline-check-option">
+              <input id="transient-analysis-input" type="checkbox" />
+              <span>启用</span>
+            </label>
+          </div>
+          <button id="submit-btn" type="submit">提交并自动执行</button>
+        </form>
+        <div class="prompt-field-wrap prompt-grid">
+          <div class="field prompt-field site-role-field">
+            <span>站点定性</span>
+            <fieldset class="site-role-panel">
+              <legend>站点定性</legend>
+              <div class="radio-option-row">
+                <label class="check-option">
+                  <input type="radio" name="site-role" value="load_substation" checked />
+                  <span>下网负荷变电站</span>
+                </label>
+                <label class="check-option">
+                  <input type="radio" name="site-role" value="renewable_collection" />
+                  <span>新能源汇集站</span>
+                </label>
+                <label class="check-option">
+                  <input type="radio" name="site-role" value="power_interconnection" />
+                  <span>电源接入站</span>
+                </label>
+                <label class="check-option">
+                  <input type="radio" name="site-role" value="grid_optimization" />
+                  <span>网架优化</span>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <div class="field prompt-field wiring-field">
+            <span>接线方式</span>
+            <div class="wiring-mode-grid">
+              <fieldset class="wiring-mode-panel">
+                <legend>可选接线方式</legend>
+                <div class="check-group radial-option-group">
+                  <label class="check-option">
+                    <input type="checkbox" name="wiring-mode" value="radial" />
+                    <span>辐射状</span>
+                  </label>
+                  <div class="check-children radial-circuit-options">
+                    <label class="check-option">
+                      <input type="checkbox" name="radial-circuit-count" value="1" checked />
+                      <span>新增1回</span>
+                    </label>
+                    <label class="check-option">
+                      <input type="checkbox" name="radial-circuit-count" value="2" />
+                      <span>新增2回</span>
+                    </label>
+                    <label class="check-option">
+                      <input type="checkbox" name="radial-circuit-count" value="3" />
+                      <span>新增3回</span>
+                    </label>
+                    <label class="check-option">
+                      <input type="checkbox" name="radial-circuit-count" value="4" />
+                      <span>新增4回</span>
+                    </label>
+                  </div>
+                </div>
+                <label class="check-option">
+                  <input type="checkbox" name="wiring-mode" value="ring" />
+                  <span>环状</span>
+                </label>
+                <label class="check-option">
+                  <input type="checkbox" name="wiring-mode" value="mesh" />
+                  <span>网状</span>
+                </label>
+                <label class="check-option">
+                  <input type="checkbox" name="wiring-mode" value="pi" />
+                  <span>Π接</span>
+                </label>
+                <div class="check-group">
+                  <label class="check-option">
+                    <input type="checkbox" name="wiring-mode-parent" value="dc" />
+                    <span>直流接线</span>
+                  </label>
+                  <div class="check-children">
+                    <label class="check-option">
+                      <input type="checkbox" name="wiring-mode" value="back_to_back_dc" data-parent="dc" />
+                      <span>背靠背柔性直流互联</span>
+                    </label>
+                    <label class="check-option">
+                      <input type="checkbox" name="wiring-mode" value="dc_networking" data-parent="dc" />
+                      <span>直流联网接线</span>
+                    </label>
+                  </div>
+                </div>
+                <label class="check-option">
+                  <input type="checkbox" name="wiring-mode" value="flexible_ac" />
+                  <span>柔性交流</span>
+                </label>
+                <label class="check-option">
+                  <input type="checkbox" name="wiring-mode" value="reinforcement" />
+                  <span>加强通道</span>
+                </label>
+              </fieldset>
+              <fieldset class="wiring-mode-panel custom-wiring-panel">
+                <legend>其他接线方式</legend>
+                <textarea
+                  id="custom-wiring-mode-input"
+                  rows="8"
+                  placeholder="可填写其他接线方式，提交后会追加到 Prompt。"
+                ></textarea>
+              </fieldset>
+            </div>
+          </div>
+          <label class="field prompt-field">
+            <span>要求</span>
+            <textarea
+              id="requirements-input"
+              rows="5"
+              readonly
+              placeholder="加载当前案例默认输出要求..."
+            ></textarea>
+          </label>
+          <label class="field prompt-field">
+            <span>新增要求</span>
+            <textarea
+              id="requirements-extra-input"
+              rows="5"
+              placeholder="可在此新增要求；上方原始要求会固定保留，不能修改。"
+            ></textarea>
+          </label>
+          <label class="field prompt-field">
+            <span>计算公式</span>
+            <textarea
+              id="formulas-input"
+              rows="5"
+              placeholder="加载当前案例默认计算公式..."
+            ></textarea>
+          </label>
+        </div>
+      </section>
+
+      <section class="card anomaly-card">
+        <h2>2. 仿真异常结果</h2>
+        <p class="hint">异常报告在方案生成前输出，作为后续规划方案的治理目标。</p>
+        <div id="anomaly-placeholder" class="placeholder">
+          原始文件提交后，完成异常定位即可在此查看故障报告。
+        </div>
+        <div id="anomaly-content" class="result-panel hidden">
+          <ul id="anomaly-list" class="anomaly-list"></ul>
+        </div>
+      </section>
+
+      <section class="card status-card">
+        <h2>3. 任务状态</h2>
+        <div id="stage-track" class="stage-track"></div>
+        <div class="status-row">
+          <div>
+            <p class="meta-label">任务标识</p>
+            <p id="task-id" class="meta-value">-</p>
+          </div>
+          <div>
+            <p class="meta-label">当前状态</p>
+            <p id="current-status" class="meta-value">未开始</p>
+          </div>
+          <div>
+            <p class="meta-label">已生成方案</p>
+            <p id="generated-count" class="meta-value">0 / 0</p>
+          </div>
+        </div>
+        <div class="log-wrap">
+          <p class="meta-label">运行日志</p>
+          <p id="boot-indicator" class="boot-indicator">前端脚本加载中...</p>
+          <ul id="runtime-log" class="runtime-log">
+            <li>等待任务提交...</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card result-card">
+        <h2>4. 最终方案结果</h2>
+        <div id="result-placeholder" class="placeholder">
+          任务完成后将在这里展示满足要求的最终规划方案。
+        </div>
+
+        <div id="result-content" class="result-content single hidden">
+          <div class="result-panel">
+            <h3>最终方案结果</h3>
+            <div id="scheme-list" class="scheme-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card compare-report-card">
+        <div class="compare-header-row">
+          <h2>5. 比选报告生成</h2>
+          <div class="compare-header-actions">
+            <button id="generate-compare-report-btn" type="button" disabled>生成比选报告</button>
+            <button id="open-compare-report-btn" type="button" class="secondary" disabled>查看报告</button>
+          </div>
+        </div>
+        <p class="hint">前四步沿用当前网架规划主流程；在方案生成完成后，可在这里进入比选报告流程，确认洞察后继续生成初稿并进入编辑页。</p>
+        <div id="compare-stage-track" class="stage-track compare-stage-track"></div>
+        <div class="status-row compare-status-row">
+          <div>
+            <p class="meta-label">报告标识</p>
+            <p id="compare-report-id" class="meta-value">-</p>
+          </div>
+          <div>
+            <p class="meta-label">当前状态</p>
+            <p id="compare-report-status" class="meta-value">等待方案生成完成</p>
+          </div>
+          <div>
+            <p class="meta-label">覆盖方案</p>
+            <p id="compare-scheme-count" class="meta-value">0</p>
+          </div>
+        </div>
+        <div id="compare-pcn-review-banner" class="compare-pcn-review-banner hidden" role="alert"></div>
+        <div id="compare-insights-panel" class="compare-insights-panel hidden">
+          <p class="meta-label">当前洞察（确认后继续执行）</p>
+          <textarea id="compare-insights-text" rows="8" readonly></textarea>
+          <div class="compare-insights-actions">
+            <button id="edit-insights-btn" type="button" class="secondary">编辑洞察</button>
+            <button id="reset-insights-btn" type="button" class="secondary">重置原文</button>
+            <button id="confirm-insights-btn" type="button">确认并继续</button>
+          </div>
+        </div>
+        <div class="log-wrap">
+          <p class="meta-label">报告流程日志</p>
+          <ul id="compare-runtime-log" class="runtime-log">
+            <li>等待方案完成后可启动比选报告。</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <div id="topology-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close="true"></div>
+      <section class="modal-content" role="dialog" aria-modal="true" aria-label="拓扑图详情">
+        <header class="modal-header">
+          <h3 id="topology-title">方案拓扑图</h3>
+          <div class="toolbar">
+            <button id="zoom-in" type="button">放大</button>
+            <button id="zoom-out" type="button">缩小</button>
+            <button id="reset-view" type="button">重置</button>
+            <button id="close-modal" type="button">关闭</button>
+          </div>
+        </header>
+        <div class="modal-body">
+          <canvas id="topology-canvas" width="1200" height="680"></canvas>
+          <aside class="node-info">
+            <p class="meta-label">节点信息</p>
+            <p id="node-info-text">点击节点查看详情</p>
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (function () {
+        function setBoot(type, text) {
+          var el = document.getElementById("boot-indicator");
+          if (!el) return;
+          el.textContent = text;
+          el.classList.remove("ok", "error");
+          if (type) el.classList.add(type);
+        }
+        window.__setBoot = setBoot;
+        setBoot(null, "基础脚本已运行，正在加载主脚本...");
+        window.addEventListener("error", function (e) {
+          var msg = (e && e.message) ? e.message : "未知脚本错误";
+          setBoot("error", "脚本错误：" + msg + "（可能是浏览器兼容模式）");
+        });
+      })();
+    </script>
+    <script defer src="./app.js?v=20260512_1" onerror="window.__setBoot && window.__setBoot('error','主脚本文件加载失败，请刷新或检查地址')"></script>
+  </body>
+</html>

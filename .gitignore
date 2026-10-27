@@ -1,0 +1,50 @@
+# Local secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.codex_tmp/
+.lore/_global/cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Runtime data, uploaded grid models, logs, and generated reports
+powergrid_pipeline/powergrid_pipeline_v2/data/base_*/
+powergrid_pipeline/powergrid_pipeline_v2/data/data_*/
+powergrid_pipeline/powergrid_pipeline_v2/data/context.json
+powergrid_pipeline/powergrid_pipeline_v2/data/context_DAS.json
+powergrid_pipeline/powergrid_pipeline_v2/data/context_shuifu.json
+powergrid_pipeline/powergrid_pipeline_v2/data/context_yuezhou.json
+powergrid_pipeline/powergrid_pipeline_v2/data_test/
+powergrid_pipeline/powergrid_pipeline_v2/logs/
+powergrid_pipeline/fulfillment_*/
+powergrid_pipeline/bridge_server.*.log
+dianwang_report_gen/outputs/
+final_test/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+logs/
+tmp/
+**/tmp/
+
+# Local editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
